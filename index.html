@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noticias climáticas del día</title>
+<style>
+  :root {
+    --verde-oscuro: #1b4332;
+    --verde: #2d6a4f;
+    --verde-claro: #d8f3dc;
+    --azul: #0b6e8a;
+    --arena: #f4f1e8;
+    --texto: #1f2a24;
+    --borde: #b7d3c0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    background: linear-gradient(180deg, var(--verde-claro) 0%, var(--arena) 320px);
+    color: var(--texto);
+    line-height: 1.55;
+  }
+  header {
+    background: var(--verde-oscuro);
+    color: #fff;
+    padding: 28px 16px 24px;
+    text-align: center;
+    border-bottom: 6px solid var(--azul);
+  }
+  header h1 { margin: 0 0 8px; font-size: clamp(1.5rem, 4vw, 2.2rem); }
+  header p { margin: 0 auto; max-width: 640px; color: #e3f4e8; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  .panel {
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(27, 67, 50, .08);
+  }
+  label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--verde-oscuro); }
+  .fila { display: flex; gap: 12px; flex-wrap: wrap; }
+  select {
+    flex: 1 1 240px;
+    padding: 11px 12px;
+    font-size: 1rem;
+    border: 1px solid var(--verde);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--texto);
+  }
+  button {
+    flex: 0 0 auto;
+    padding: 11px 22px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: 0;
+    border-radius: 8px;
+    background: var(--verde);
+    color: #fff;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: var(--verde-oscuro); }
+  button:disabled { opacity: .6; cursor: wait; }
+  select:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
+  #resultados { margin-top: 24px; }
+  #resultados h2 { margin: 0 0 4px; font-size: 1.25rem; color: var(--verde-oscuro); }
+  #fecha { margin: 0 0 12px; color: #4a5a50; font-size: .95rem; }
+  #respuesta {
+    white-space: pre-line;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-left: 6px solid var(--azul);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-wrap: anywhere;
+  }
+  #respuesta.cargando { color: #4a5a50; font-style: italic; }
+  #respuesta.error { border-left-color: #b3261e; color: #7a1a14; }
+  #respuesta a { color: var(--azul); text-decoration: underline; }
+  footer { text-align: center; font-size: .85rem; color: #4a5a50; padding: 0 16px 28px; }
+  .oculto { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Noticias climáticas del día</h1>
+  <p>Esta página muestra un resumen de las noticias ambientales más recientes, explicado por inteligencia artificial.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <label for="tema">Tema</label>
+    <div class="fila">
+      <select id="tema" name="tema">
+        <option value="olas de calor México">Olas de calor en México</option>
+        <option value="deforestación México">Deforestación en México</option>
+        <option value="plásticos de un solo uso">Plásticos de un solo uso</option>
+        <option value="energías renovables México">Energías renovables en México</option>
+        <option value="sequía Sinaloa">Sequía en Sinaloa</option>
+        <option value="manglares Sinaloa">Manglares de Sinaloa</option>
+      </select>
+      <button id="boton" type="button">Ver noticias</button>
+    </div>
+  </section>
+
+  <section id="resultados" class="oculto" aria-live="polite">
+    <h2>Noticias de hoy: <span id="tituloTema"></span></h2>
+    <p id="fecha"></p>
+    <div id="respuesta"></div>
+  </section>
+</main>
+
+<footer>Práctica 3.5 · Desarrollo Sustentable · TecNM Campus Mazatlán. El resumen lo genera una IA a partir de Google Noticias; verifica siempre en la fuente original.</footer>
+
+<script>
+  // Pega aquí la URL del webhook de Make (Webhooks > Custom webhook).
+  const WEBHOOK_URL = "https://hook.us2.make.com/xeag13tp9daesd6r4fyazhg3wltg4i3v";
+
+  const selTema = document.getElementById("tema");
+  const boton = document.getElementById("boton");
+  const bloque = document.getElementById("resultados");
+  const tituloTema = document.getElementById("tituloTema");
+  const fechaEl = document.getElementById("fecha");
+  const respuesta = document.getElementById("respuesta");
+
+  function fechaDeHoy() {
+    return new Date().toLocaleDateString("es-MX", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+  }
+
+  // Muestra el texto plano; las líneas que empiezan con http se convierten en enlaces.
+  function mostrarTexto(texto) {
+    respuesta.textContent = "";
+    texto.split("\n").forEach(function (linea, i, todas) {
+      const limpia = linea.trim();
+      if (limpia.indexOf("http") === 0) {
+        const a = document.createElement("a");
+        a.href = limpia;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = limpia;
+        respuesta.appendChild(document.createTextNode(linea.slice(0, linea.indexOf("http"))));
+        respuesta.appendChild(a);
+      } else {
+        respuesta.appendChild(document.createTextNode(linea));
+      }
+      if (i < todas.length - 1) respuesta.appendChild(document.createTextNode("\n"));
+    });
+  }
+
+  boton.addEventListener("click", async function () {
+    const tema = selTema.value;
+    bloque.classList.remove("oculto");
+    tituloTema.textContent = selTema.options[selTema.selectedIndex].text;
+    fechaEl.textContent = fechaDeHoy();
+    respuesta.className = "cargando";
+    respuesta.textContent = "Buscando y resumiendo noticias...";
+    boton.disabled = true;
+
+    try {
+      const cuerpo = new URLSearchParams();
+      cuerpo.append("tema", tema);
+      const r = await fetch(WEBHOOK_URL, { method: "POST", body: cuerpo });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const texto = await r.text();
+      respuesta.className = "";
+      mostrarTexto(texto);
+    } catch (e) {
+      respuesta.className = "error";
+      respuesta.textContent = "No se pudieron obtener las noticias, intenta de nuevo.";
+    } finally {
+      boton.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
