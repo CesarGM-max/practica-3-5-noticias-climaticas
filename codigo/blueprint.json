@@ -1,0 +1,133 @@
+{
+  "name": "Noticias_Climaticas_Cesar",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": 3004040,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "rss:ActionReadArticles",
+      "version": 4,
+      "parameters": {
+        "include": []
+      },
+      "mapper": {
+        "url": "https://news.google.com/rss/search?q={{encodeURL(1.tema)}}&hl=es-419&gl=MX&ceid=MX:es-419",
+        "maxResults": "5",
+        "gzip": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "util:TextAggregator",
+      "version": 1,
+      "parameters": {
+        "feeder": 2,
+        "rowSeparator": "\n"
+      },
+      "mapper": {
+        "value": "Título: {{2.title}}\nFecha: {{2.dateCreated}}\nEnlace: {{2.url}}\n"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "ai-local-agent:RunLocalAIAgent",
+      "version": 0,
+      "parameters": {
+        "makeConnectionId": 10771262
+      },
+      "mapper": {
+        "message": "Tema: {{1.tema}}\n\nNoticias:\n{{3.text}}",
+        "threadId": "",
+        "outputType": "text",
+        "tokenLimit": "50",
+        "modelConfig": {
+          "timeout": "",
+          "recursionLimit": "300",
+          "aiCompactionEnabled": true,
+          "iterationsFromHistoryCount": "10"
+        },
+        "defaultModel": "large",
+        "systemPrompt": "Eres un divulgador ambiental para alumnos de Desarrollo Sustentable del TecNM.\nRecibirás un tema y una lista de noticias recientes (título, fecha y enlace).\nUsa ÚNICAMENTE la información de esas noticias; no inventes datos ni agregues noticias que no estén en la lista.\n\nResponde en texto plano (sin asteriscos, sin markdown), en español, con este formato:\n\nRESUMEN DEL DÍA\n[3 a 4 líneas explicando de qué tratan las noticias en conjunto]\n\nNOTICIAS\n1. [título] - [1 línea explicando por qué importa]\n   [enlace]\n(repite para cada noticia)\n\n¿QUÉ PUEDO HACER YO?\n[1 acción concreta que un estudiante puede hacer relacionada con el tema]\n\nSi la lista de noticias viene vacía, responde: \"No se encontraron noticias recientes sobre este tema.\" ",
+        "promptCaching": "none",
+        "fallbackEnabled": false
+      },
+      "tools": [],
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "gateway:WebhookRespond",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "status": "200",
+        "body": "{{4.response}}",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "dlq": false,
+      "dataloss": false,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "roundtrips": 1,
+      "sequential": false,
+      "confidential": false,
+      "freshVariables": false,
+      "autoCommitTriggerLast": true
+    },
+    "designer": {
+      "orphans": []
+    }
+  }
+}
